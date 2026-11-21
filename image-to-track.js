@@ -307,7 +307,9 @@ convertButton.addEventListener("click", async () => {
       const binary = atob(encodedBase64);
       const bytes = new Uint8Array(binary.length);
       for (let byteIndex = 0; byteIndex < binary.length; byteIndex++) bytes[byteIndex] = binary.charCodeAt(byteIndex);
-      zip.file(`frame_${String(index + 1).padStart(6, "0")}.track`, bytes);
+      const bundleNumber = Math.floor(index / 500) + 1;
+      const bundleFolder = `Bundle_${String(bundleNumber).padStart(3, "0")}`;
+      zip.file(`${bundleFolder}/frame_${String(index + 1).padStart(6, "0")}.track`, bytes);
       const completed = index + 1;
       progressLabel.textContent = `${completed} / ${selectedFrames.length}`;
       progressFill.style.width = `${(completed / selectedFrames.length) * 100}%`;
