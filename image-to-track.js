@@ -20,6 +20,7 @@ let xCoordinates = [];
 let zCoordinates = [];
 let selectedFrames = [];
 let frameSourceLabel = "";
+let pyodide = null;
 
 function status(message, state = "normal") {
   statusText.textContent = message;
@@ -31,7 +32,7 @@ function naturalCompare(a, b) {
 }
 
 function updateReadyState() {
-  convertButton.disabled = !(templateData && selectedFrames.length && window.JSZip);
+  convertButton.disabled = !(templateData && selectedFrames.length && window.JSZip && pyodide);
 }
 
 function parseTemplate(data) {
@@ -159,6 +160,20 @@ async function showPreview(file) {
   }
 }
 
+async function initializeEncoder() {
+  try {
+    status("Loading PolyTrack encoder…");
+    pyodide = await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.27.7/full/"});
+    const response = await fetch("./polytrack_encoder.py");
+    if (!response.ok) throw new Error("Could not load PolyTrack encoder.");
+    pyodide.FS.writeFile("/home/pyodide/polytrack_encoder.py", await response.text());
+    await pyodide.runPythonAsync('import sys,json,base64; sys.path.insert(0,"/home/pyodide"); import polytrack_encoder; web_encode_json=lambda raw: base64.b64encode(polytrack_encoder.encode_polytrack2(json.loads(raw))).decode("ascii")');
+    status("Encoder ready. Choose images or a ZIP archive.", "ready");
+  } catch (error) { status("Encoder could not start: " + error.message, "error"); }
+  updateReadyState();
+}
+initializeEncoder();
+
 async function loadBundledTemplate() {
   try {
     const response = await fetch("./template.json");
@@ -224,7 +239,7 @@ for (const control of [thresholdInput, darkColorInput, lightColorInput, invertIn
 }
 
 convertButton.addEventListener("click", async () => {
-  if (!templateData || !selectedFrames.length) return;
+  if (!templateData || !selectedFrames.length || !pyodide) return;
   convertButton.disabled = true;
   progressFill.style.width = "0%";
   progressLabel.textContent = `0 / ${selectedFrames.length}`;
@@ -238,15 +253,20 @@ convertButton.addEventListener("click", async () => {
       const file = await frame.getBlob();
       const grid = await rasterize(file, settings);
       const result = makeFrameJson(grid, file, index);
-      const json = JSON.stringify(result);
-      zip.file(`frame_${String(index + 1).padStart(6, "0")}.json`, json);
+      pyodide.globals.set("frame_json_input", JSON.stringify(result));
+      const encodedBase64 = await pyodide.runPythonAsync("web_encode_json(frame_json_input)");
+      pyodide.globals.delete("frame_json_input");
+      const binary = atob(encodedBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let byteIndex = 0; byteIndex < binary.length; byteIndex++) bytes[byteIndex] = binary.charCodeAt(byteIndex);
+      zip.file(`frame_${String(index + 1).padStart(6, "0")}.track`, bytes);
       const completed = index + 1;
       progressLabel.textContent = `${completed} / ${selectedFrames.length}`;
       progressFill.style.width = `${(completed / selectedFrames.length) * 100}%`;
       if (completed % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
     }
 
-    status("Building ZIP archive…");
+    status("Building ZIP of encoded .track files…");
     const blob = await zip.generateAsync(
       { type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } },
       metadata => {
@@ -256,12 +276,12 @@ convertButton.addEventListener("click", async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "polytrack_image_frames_24x18.zip";
+    link.download = "polytrack_encoded_tracks_24x18.zip";
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    status(`Done! Created ${selectedFrames.length.toLocaleString()} decompiled JSON files from ${frameSourceLabel}.`, "ready");
+    status(`Done! Created ${selectedFrames.length.toLocaleString()} encoded PolyTrack .track files from ${frameSourceLabel}.`, "ready");
   } catch (error) {
     console.error(error);
     status(error.message || "Conversion failed.", "error");
