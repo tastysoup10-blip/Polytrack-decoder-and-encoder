@@ -16,6 +16,7 @@ const previewCaption = document.querySelector("#preview-caption");
 
 let templateData = null;
 let templatePartsByPosition = null;
+let templateStartPart = null;
 let xCoordinates = [];
 let zCoordinates = [];
 let selectedFrames = [];
@@ -44,6 +45,7 @@ function parseTemplate(data) {
   if (blocks.length !== 432 || starts.length !== 1) {
     throw new Error(`Template must contain 432 blocks and exactly one Start part; found ${blocks.length} blocks and ${starts.length} Start parts.`);
   }
+  templateStartPart = { ...starts[0] };
 
   const xs = [...new Set(blocks.map(part => part.x))].sort((a,b) => a-b);
   const zs = [...new Set(blocks.map(part => part.z))].sort((a,b) => a-b);
@@ -138,6 +140,9 @@ function makeFrameJson(grid, file, index) {
       parts.push(part);
     }
   }
+  // Keep the elevated Start part from the template in every generated frame.
+  // Only the 432 image-grid blocks are recolored; the Start part stays unchanged.
+  if (templateStartPart) parts.push({ ...templateStartPart });
   result.track.parts = parts;
   return result;
 }
