@@ -147,7 +147,7 @@ function makeFrameJson(grid, file, index) {
   return result;
 }
 
-async function showPreview(file) {
+async function showPreview(file, convertingIndex = null, totalFrames = null) {
   try {
     const settings = getSettings();
     const source = file.getBlob ? await file.getBlob() : file;
@@ -160,7 +160,9 @@ async function showPreview(file) {
         ctx.fillRect(x, y, 1, 1);
       }
     }
-    previewCaption.textContent = `${file.name} · resized to 24 × 18 pixels`;
+    previewCaption.textContent = convertingIndex === null
+      ? `${file.name} · resized to 24 × 18 pixels`
+      : `Converting frame ${convertingIndex.toLocaleString()} of ${totalFrames.toLocaleString()} · ${file.name}`;
   } catch (error) {
     previewCaption.textContent = error.message;
   }
@@ -255,7 +257,12 @@ convertButton.addEventListener("click", async () => {
     const zip = new JSZip();
     for (let index = 0; index < selectedFrames.length; index++) {
       const frame = selectedFrames[index];
-      status(`Processing ${frame.name}…`);
+      const currentFrame = index + 1;
+      status(`Converting frame ${currentFrame.toLocaleString()} of ${selectedFrames.length.toLocaleString()}: ${frame.name}`);
+      progressLabel.textContent = `Converting ${currentFrame} / ${selectedFrames.length}`;
+      await showPreview(frame, currentFrame, selectedFrames.length);
+      // Yield so the browser can paint the updated preview before encoding starts.
+      await new Promise(resolve => setTimeout(resolve, 0));
       const file = await frame.getBlob();
       const grid = await rasterize(file, settings);
       const result = makeFrameJson(grid, file, index);
