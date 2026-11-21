@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10141d">
+  <meta name="description" content="Encode and decode PolyTrack track files in your browser.">
+  <title>PolyTrack Encoder / Decoder</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+  <script src="./web-app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="PolyTrack Converter home">
+        <span class="brand-mark">PT</span>
+        <span>PolyTrack <span class="muted">Tools</span></span>
+      </a>
+      <span class="version">BROWSER EDITION</span>
+    </header>
+
+    <section class="intro">
+      <p class="eyebrow">TRACK FILE UTILITY</p>
+      <h1>Encoder <span class="accent">/</span> Decoder</h1>
+      <p class="subtitle">Convert PolyTrack JSON and .track files directly in your browser.</p>
+    </section>
+
+    <section class="workspace" aria-label="Converter">
+      <div class="mode-switch" role="tablist" aria-label="Conversion mode">
+        <button class="mode-button active" id="encode-mode" role="tab" aria-selected="true" type="button">JSON <span>→</span> TRACK</button>
+        <button class="mode-button" id="decode-mode" role="tab" aria-selected="false" type="button">TRACK <span>→</span> JSON</button>
+      </div>
+
+      <div class="editor-heading">
+        <div>
+          <label for="input-text" id="input-label">Input JSON</label>
+          <p id="input-hint">Paste your decoded PolyTrack JSON here, or choose a .json file.</p>
+        </div>
+        <label class="file-button" for="file-input">Choose file</label>
+        <input id="file-input" type="file" accept=".json,.track,.txt,text/plain,application/json">
+      </div>
+
+      <textarea id="input-text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Paste JSON here…" aria-describedby="input-hint"></textarea>
+
+      <div class="editor-tools">
+        <span id="input-count" class="subtle">0 characters</span>
+        <div class="tool-actions">
+          <button class="text-button" id="paste-button" type="button">Paste</button>
+          <button class="text-button" id="copy-input-button" type="button">Copy input</button>
+          <button class="text-button danger-text" id="clear-button" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div class="convert-row">
+        <div class="status-wrap">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text" role="status" aria-live="polite">Loading Python runtime…</span>
+        </div>
+        <button class="convert-button" id="convert-button" type="button" disabled>
+          <span id="convert-label">Loading converter…</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <div class="editor-heading output-heading">
+        <div>
+          <label for="output-text" id="output-label">TRACK output</label>
+          <p id="output-hint">Your encoded track code will appear here.</p>
+        </div>
+        <button class="file-button secondary" id="download-button" type="button" disabled>Download</button>
+      </div>
+      <textarea id="output-text" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="Your result will appear here…" readonly></textarea>
+      <div class="editor-tools">
+        <span id="output-count" class="subtle">0 characters</span>
+        <div class="tool-actions">
+          <button class="text-button" id="copy-output-button" type="button">Copy result</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="notice">
+      <span class="notice-icon" aria-hidden="true">ⓘ</span>
+      <p><strong>Runs locally in your browser.</strong> Your input files are processed on your device and are not uploaded to a server. The first visit downloads the Python runtime needed by the converter.</p>
+    </section>
+
+    <footer>
+      <span>PolyTrack Encoder / Decoder</span>
+      <span><a href="https://github.com/tastysoup10-blip/Polytrack-decoder-and-encoder" target="_blank" rel="noopener noreferrer">View source on GitHub ↗</a></span>
+    </footer>
+  </main>
+</body>
+</html>
