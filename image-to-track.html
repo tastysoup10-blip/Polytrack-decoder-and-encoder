@@ -50,20 +50,25 @@
     <section class="intro">
       <p class="eyebrow">IMAGE SEQUENCE UTILITY</p>
       <h1>Images <span class="accent">→</span> Tracks</h1>
-      <p class="subtitle">Turn JPG or PNG frames into decompiled 24×18 PolyTrack2 track files.</p>
+      <p class="subtitle">Turn image sequences or ZIP archives into decompiled 24×18 PolyTrack2 track files.</p>
     </section>
 
     <section class="workspace">
       <div class="upload-grid">
         <div class="upload-card">
-          <label for="template-file">24×18 track template (JSON)</label>
-          <p>Choose your updated decompiled 24×18 checkerboard track. Its coordinates and track settings are reused.</p>
-          <input id="template-file" type="file" accept=".json,application/json">
-          <div class="file-summary" id="template-status">No template selected</div>
+          <label>Built-in 24×18 track template</label>
+          <p>The checkerboard template is packaged with this app. You no longer need to upload its JSON file.</p>
+          <div class="file-summary" id="template-status">Loading built-in template…</div>
         </div>
         <div class="upload-card">
-          <label for="frame-files">Image frames (JPG / PNG)</label>
-          <p>Select one or more frames. Files are sorted naturally by filename (1, 2, 10).</p>
+          <label for="zip-file">Upload a ZIP of images (up to 5,000)</label>
+          <p>Choose one ZIP containing JPG, PNG, or WebP frames. Images are sorted naturally by filename.</p>
+          <input id="zip-file" type="file" accept=".zip,application/zip">
+          <div class="file-summary">Recommended for large sequences</div>
+        </div>
+        <div class="upload-card">
+          <label for="frame-files">Or select individual image frames</label>
+          <p>Select multiple JPG, PNG, or WebP images. Selecting these clears the ZIP selection.</p>
           <input id="frame-files" type="file" accept="image/*,.jpg,.jpeg,.png,.webp" multiple>
           <div class="file-summary" id="frames-status">No frames selected</div>
         </div>
@@ -104,7 +109,7 @@
       <div class="convert-row" style="margin-top:18px;margin-bottom:0">
         <div class="status-wrap">
           <span class="status-dot" id="status-dot"></span>
-          <span id="status-text" role="status" aria-live="polite">Choose a template and image frames.</span>
+          <span id="status-text" role="status" aria-live="polite">Choose an image ZIP or individual image frames.</span>
         </div>
         <span class="subtle" id="progress-label">0 / 0</span>
       </div>
@@ -116,7 +121,7 @@
 
     <section class="notice">
       <span class="notice-icon" aria-hidden="true">ⓘ</span>
-      <p><strong>Runs locally in your browser.</strong> Your template and images are not uploaded. The ZIP contains one decompiled PolyTrack2 JSON file per image frame. This page does not encode share codes; use the main Encoder / Decoder page afterward if you want to encode an individual JSON file.</p>
+      <p><strong>Runs locally in your browser.</strong> The bundled template and your images stay in your browser; images are not uploaded. The output ZIP contains one decompiled PolyTrack2 JSON file per image frame. Supports up to 5,000 images, though very large archives may take time and use substantial memory. This page does not encode share codes; use the main Encoder / Decoder page afterward if you want to encode an individual JSON file.</p>
     </section>
 
     <footer>
