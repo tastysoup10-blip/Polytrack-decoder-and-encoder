@@ -8,6 +8,7 @@
   <title>Image Sequence to PolyTrack</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
   <script src="./image-to-track.js" defer></script>
   <style>
     .top-link { color: var(--accent-2); font-size: 12px; font-weight: 700; text-decoration: none; }
@@ -121,7 +122,7 @@
 
     <section class="notice">
       <span class="notice-icon" aria-hidden="true">ⓘ</span>
-      <p><strong>Runs locally in your browser.</strong> The bundled template and your images stay in your browser; images are not uploaded. The output ZIP contains one decompiled PolyTrack2 JSON file per image frame. Supports up to 5,000 images, though very large archives may take time and use substantial memory. This page does not encode share codes; use the main Encoder / Decoder page afterward if you want to encode an individual JSON file.</p>
+      <p><strong>Runs locally in your browser.</strong> The bundled template and your images stay in your browser; images are not uploaded. The output ZIP contains one encoded PolyTrack2 .track file per image frame. Files are encoded locally in your browser. Supports up to 5,000 images, though very large archives may take time and use substantial memory.</p>
     </section>
 
     <footer>
