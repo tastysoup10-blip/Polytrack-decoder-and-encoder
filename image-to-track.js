@@ -17,6 +17,7 @@ const previewCaption = document.querySelector("#preview-caption");
 let templateData = null;
 let templatePartsByPosition = null;
 let templateStartPart = null;
+let rowCheckpointOrder = new Map();
 let xCoordinates = [];
 let zCoordinates = [];
 let selectedFrames = [];
@@ -41,9 +42,10 @@ function parseTemplate(data) {
     throw new Error("That file does not look like a decompiled PolyTrack2 JSON template.");
   }
   const blocks = data.track.parts.filter(part => part.partId === 29);
-  const starts = data.track.parts.filter(part => part.part === "Start" || part.partId === 5);
-  if (blocks.length !== 432 || starts.length !== 1) {
-    throw new Error(`Template must contain 432 blocks and exactly one Start part; found ${blocks.length} blocks and ${starts.length} Start parts.`);
+  const imageParts = data.track.parts.filter(part => part.part === "Finish" || part.partId === 6 || part.part === "Checkpoint" || part.partId === 52);
+  const starts = data.track.parts.filter(part => part.part === "PlaneStart" || part.partId === 92 || part.part === "Start" || part.partId === 5);
+  if (blocks.length !== 432 || imageParts.length !== 432 || starts.length !== 1) {
+    throw new Error(`Template must contain 432 blocks, 432 Finish/Checkpoint pieces, and exactly one start piece; found ${blocks.length} blocks, ${imageParts.length} Finish/Checkpoint pieces, and ${starts.length} start pieces.`);
   }
   templateStartPart = { ...starts[0] };
 
@@ -57,9 +59,27 @@ function parseTemplate(data) {
   for (const part of blocks) {
     const key = `${part.x},${part.z}`;
     if (map.has(key)) throw new Error("The template contains duplicate block coordinates.");
-    map.set(key, part);
+    map.set(key, { block: part, imagePart: null });
   }
-  if (map.size !== 432) throw new Error("The template is missing one or more grid positions.");
+  for (const part of imageParts) {
+    const key = `${part.x},${part.z}`;
+    const position = map.get(key);
+    if (!position || position.imagePart) throw new Error("The template has a missing or duplicate Finish/Checkpoint position.");
+    position.imagePart = part;
+  }
+  if (map.size !== 432 || [...map.values()].some(position => !position.imagePart)) {
+    throw new Error("The template is missing one or more complete image-grid positions.");
+  }
+
+  // Each X row has a checkpoint order in the supplied template. Reuse it
+  // when a dark Finish position is converted into a light Checkpoint.
+  rowCheckpointOrder = new Map();
+  for (const part of imageParts) {
+    if (part.part === "Checkpoint" || part.partId === 52) {
+      rowCheckpointOrder.set(part.x, Number(part.checkpointOrder));
+    }
+  }
+  if (rowCheckpointOrder.size !== 18) throw new Error("The template must define checkpoint orders for all 18 image rows.");
 
   templateData = data;
   templatePartsByPosition = map;
@@ -118,6 +138,9 @@ async function rasterize(file, settings) {
   return grid;
 }
 
+function settingsLightValue() { return Number(lightColorInput.value); }
+function rowCheckpointOrderValue(x) { return rowCheckpointOrder.get(x); }
+
 function makeFrameJson(grid, file, index) {
   const result = JSON.parse(JSON.stringify(templateData));
   const frameName = `frame_${String(index + 1).padStart(6, "0")}`;
@@ -131,17 +154,28 @@ function makeFrameJson(grid, file, index) {
     for (let col = 0; col < 24; col++) {
       const x = xCoordinates[row];
       const z = zCoordinates[col];
-      const part = { ...templatePartsByPosition.get(`${x},${z}`) };
-      part.color = grid[row][col];
-      // User confirmed block rotation does not affect appearance.
-      part.rotation = 0;
-      part.rotationAxis = 0;
-      if ("rotationAxisName" in part) part.rotationAxisName = "YPositive";
-      parts.push(part);
+      const position = templatePartsByPosition.get(`${x},${z}`);
+      const block = { ...position.block };
+      // The supplied template has a raised Block above each ground-level
+      // Finish/Checkpoint piece. Keep the block and use the ground piece
+      // itself to draw the black-and-white image in PolyTrack's 3D preview.
+      parts.push(block);
+
+      const imagePart = { ...position.imagePart };
+      if (grid[row][col] === settingsLightValue()) {
+        imagePart.partId = 52;
+        imagePart.part = "Checkpoint";
+        imagePart.checkpointOrder = rowCheckpointOrderValue(x);
+      } else {
+        imagePart.partId = 6;
+        imagePart.part = "Finish";
+        imagePart.checkpointOrder = null;
+      }
+      imagePart.startOrder = null;
+      parts.push(imagePart);
     }
   }
-  // Keep the elevated Start part from the template in every generated frame.
-  // Only the 432 image-grid blocks are recolored; the Start part stays unchanged.
+  // Preserve the template's elevated PlaneStart/Start piece.
   if (templateStartPart) parts.push({ ...templateStartPart });
   result.track.parts = parts;
   return result;
@@ -187,7 +221,7 @@ async function loadBundledTemplate() {
     const response = await fetch("./template.json");
     if (!response.ok) throw new Error(`Could not load bundled template (HTTP ${response.status}).`);
     parseTemplate(await response.json());
-    document.querySelector("#template-status").textContent = "Built-in 24×18 template loaded · 432 blocks";
+    document.querySelector("#template-status").textContent = "Built-in 24×18 template loaded · 432 image positions with Finish/Checkpoint pixels";
     status("Template ready. Choose images or a ZIP archive.", "ready");
   } catch (error) {
     document.querySelector("#template-status").textContent = "Built-in template failed to load";
