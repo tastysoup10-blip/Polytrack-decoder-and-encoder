@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
-  <script src="./image-to-track.js" defer></script>
+  <script src="./image-to-track.js?v=7000" defer></script>
   <style>
     .top-link { color: var(--accent-2); font-size: 12px; font-weight: 700; text-decoration: none; }
     .top-link:hover { color: white; }
@@ -62,7 +62,7 @@
           <div class="file-summary" id="template-status">Loading built-in template…</div>
         </div>
         <div class="upload-card">
-          <label for="zip-file">Upload a ZIP of images (up to 5,000)</label>
+          <label for="zip-file">Upload a ZIP of images (up to 7,000)</label>
           <p>Choose one ZIP containing JPG, PNG, or WebP frames. Images are sorted naturally by filename.</p>
           <input id="zip-file" type="file" accept=".zip,application/zip">
           <div class="file-summary">Recommended for large sequences</div>
@@ -116,13 +116,13 @@
       </div>
       <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
       <button class="convert-button primary-wide" id="convert-button" type="button" disabled>
-        <span id="convert-label">Convert frames to JSON ZIP</span><span aria-hidden="true">↓</span>
+        <span id="convert-label">Convert frames to .track ZIP</span><span aria-hidden="true">↓</span>
       </button>
     </section>
 
     <section class="notice">
       <span class="notice-icon" aria-hidden="true">ⓘ</span>
-      <p><strong>Runs locally in your browser.</strong> The bundled template and your images stay in your browser; images are not uploaded. The output ZIP contains one encoded PolyTrack2 .track file per image frame. Files are encoded locally in your browser. Supports up to 5,000 images, though very large archives may take time and use substantial memory.</p>
+      <p><strong>Runs locally in your browser.</strong> The bundled template and your images stay in your browser; images are not uploaded. The output ZIP contains one encoded PolyTrack2 .track file per image frame. Files are encoded locally in your browser. Supports up to 7,000 images, though very large archives may take time and use substantial memory.</p>
     </section>
 
     <footer>
