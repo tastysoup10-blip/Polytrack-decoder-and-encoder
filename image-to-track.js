@@ -39,19 +39,20 @@ function parseTemplate(data) {
   if (data?.format !== "PolyTrack2" || !data?.track || !Array.isArray(data.track.parts)) {
     throw new Error("That file does not look like a decompiled PolyTrack2 JSON template.");
   }
-  if (data.track.parts.length !== 432) {
-    throw new Error(`Expected 432 blocks in the 24×18 template; found ${data.track.parts.length}.`);
+  const blocks = data.track.parts.filter(part => part.partId === 29);
+  const starts = data.track.parts.filter(part => part.part === "Start" || part.partId === 5);
+  if (blocks.length !== 432 || starts.length !== 1) {
+    throw new Error(`Template must contain 432 blocks and exactly one Start part; found ${blocks.length} blocks and ${starts.length} Start parts.`);
   }
 
-  const xs = [...new Set(data.track.parts.map(part => part.x))].sort((a,b) => a-b);
-  const zs = [...new Set(data.track.parts.map(part => part.z))].sort((a,b) => a-b);
+  const xs = [...new Set(blocks.map(part => part.x))].sort((a,b) => a-b);
+  const zs = [...new Set(blocks.map(part => part.z))].sort((a,b) => a-b);
   if (xs.length !== 18 || zs.length !== 24) {
     throw new Error(`Template must have 18 X coordinates and 24 Z coordinates; found ${xs.length} and ${zs.length}.`);
   }
 
   const map = new Map();
-  for (const part of data.track.parts) {
-    if (part.partId !== 29) throw new Error("The template must contain Block parts (partId 29) only.");
+  for (const part of blocks) {
     const key = `${part.x},${part.z}`;
     if (map.has(key)) throw new Error("The template contains duplicate block coordinates.");
     map.set(key, part);
@@ -192,10 +193,10 @@ loadBundledTemplate();
 function setSelectedFrames(frames, label) {
   selectedFrames = frames.sort(naturalCompare);
   frameSourceLabel = label;
-  if (selectedFrames.length > 5000) {
+  if (selectedFrames.length > 7000) {
     selectedFrames = [];
-    document.querySelector("#frames-status").textContent = "Limit is 5,000 images per conversion";
-    status("This converter supports up to 5,000 images at a time.", "error");
+    document.querySelector("#frames-status").textContent = "Limit is 7,000 images per conversion";
+    status("This converter supports up to 7,000 images at a time.", "error");
   } else {
     document.querySelector("#frames-status").textContent = selectedFrames.length
       ? `${selectedFrames.length.toLocaleString()} frame(s) selected from ${label}`
