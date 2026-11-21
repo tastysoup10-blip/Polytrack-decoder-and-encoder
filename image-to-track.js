@@ -289,10 +289,34 @@ convertButton.addEventListener("click", async () => {
   try {
     if (!window.JSZip) throw new Error("ZIP library did not load. Refresh the page and try again.");
     const settings = getSettings();
+    // The downloaded master archive contains one ZIP per 500 tracks.
     const zip = new JSZip();
+    let bundleZip = null;
+    let bundleNumber = 0;
+    let tracksInBundle = 0;
+
+    async function finishBundle() {
+      if (!bundleZip || tracksInBundle === 0) return;
+      status(`Compressing bundle ${bundleNumber.toString().padStart(3, "0")} (${tracksInBundle} tracks)…`);
+      const bundleBytes = await bundleZip.generateAsync({
+        type: "uint8array",
+        compression: "DEFLATE",
+        compressionOptions: { level: 3 }
+      });
+      zip.file(`Bundle_${String(bundleNumber).padStart(3, "0")}.zip`, bundleBytes, { compression: "STORE" });
+      bundleZip = null;
+      tracksInBundle = 0;
+    }
+
     for (let index = 0; index < selectedFrames.length; index++) {
       const frame = selectedFrames[index];
       const currentFrame = index + 1;
+      const nextBundleNumber = Math.floor(index / 500) + 1;
+      if (nextBundleNumber !== bundleNumber) {
+        await finishBundle();
+        bundleNumber = nextBundleNumber;
+        bundleZip = new JSZip();
+      }
       status(`Converting frame ${currentFrame.toLocaleString()} of ${selectedFrames.length.toLocaleString()}: ${frame.name}`);
       progressLabel.textContent = `Converting ${currentFrame} / ${selectedFrames.length}`;
       await showPreview(frame, currentFrame, selectedFrames.length);
@@ -307,16 +331,16 @@ convertButton.addEventListener("click", async () => {
       const binary = atob(encodedBase64);
       const bytes = new Uint8Array(binary.length);
       for (let byteIndex = 0; byteIndex < binary.length; byteIndex++) bytes[byteIndex] = binary.charCodeAt(byteIndex);
-      const bundleNumber = Math.floor(index / 500) + 1;
-      const bundleFolder = `Bundle_${String(bundleNumber).padStart(3, "0")}`;
-      zip.file(`${bundleFolder}/frame_${String(index + 1).padStart(6, "0")}.track`, bytes);
+      bundleZip.file(`frame_${String(index + 1).padStart(6, "0")}.track`, bytes);
+      tracksInBundle++;
       const completed = index + 1;
       progressLabel.textContent = `${completed} / ${selectedFrames.length}`;
       progressFill.style.width = `${(completed / selectedFrames.length) * 100}%`;
       if (completed % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
     }
+    await finishBundle();
 
-    status("Building ZIP of encoded .track files…");
+    status("Building master ZIP containing the bundle ZIP files…");
     const blob = await zip.generateAsync(
       { type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } },
       metadata => {
@@ -326,12 +350,12 @@ convertButton.addEventListener("click", async () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "polytrack_encoded_tracks_24x18.zip";
+    link.download = "polytrack_track_bundles_24x18.zip";
     document.body.append(link);
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    status(`Done! Created ${selectedFrames.length.toLocaleString()} encoded PolyTrack .track files from ${frameSourceLabel}.`, "ready");
+    status(`Done! Created ${bundleNumber.toLocaleString()} bundle ZIP file(s), containing ${selectedFrames.length.toLocaleString()} encoded PolyTrack tracks from ${frameSourceLabel}.`, "ready");
   } catch (error) {
     console.error(error);
     status(error.message || "Conversion failed.", "error");
