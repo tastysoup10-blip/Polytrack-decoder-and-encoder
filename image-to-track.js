@@ -156,9 +156,10 @@ function makeFrameJson(grid, file, index) {
       const z = zCoordinates[col];
       const position = templatePartsByPosition.get(`${x},${z}`);
       const block = { ...position.block };
-      // The supplied template has a raised Block above each ground-level
-      // Finish/Checkpoint piece. Keep the block and use the ground piece
-      // itself to draw the black-and-white image in PolyTrack's 3D preview.
+      // Apply the image's black/white pixel color to the raised Block too.
+      // The ground-level Finish/Checkpoint piece independently follows the
+      // same pixel, so both visible layers reproduce the image in PolyTrack.
+      block.color = grid[row][col];
       parts.push(block);
 
       const imagePart = { ...position.imagePart };
