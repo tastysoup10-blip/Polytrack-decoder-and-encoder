@@ -1,4 +1,4 @@
-const templateInput = document.querySelector("#template-file");
+const zipInput = document.querySelector("#zip-file");
 const framesInput = document.querySelector("#frame-files");
 const thresholdInput = document.querySelector("#threshold");
 const darkColorInput = document.querySelector("#dark-color");
@@ -19,6 +19,7 @@ let templatePartsByPosition = null;
 let xCoordinates = [];
 let zCoordinates = [];
 let selectedFrames = [];
+let frameSourceLabel = "";
 
 function status(message, state = "normal") {
   statusText.textContent = message;
@@ -142,7 +143,8 @@ function makeFrameJson(grid, file, index) {
 async function showPreview(file) {
   try {
     const settings = getSettings();
-    const grid = await rasterize(file, settings);
+    const source = file.getBlob ? await file.getBlob() : file;
+    const grid = await rasterize(source, settings);
     const ctx = preview.getContext("2d");
     ctx.clearRect(0, 0, 24, 18);
     for (let y = 0; y < 18; y++) {
@@ -157,29 +159,62 @@ async function showPreview(file) {
   }
 }
 
-templateInput.addEventListener("change", async () => {
-  const file = templateInput.files?.[0];
-  if (!file) return;
+async function loadBundledTemplate() {
   try {
-    parseTemplate(JSON.parse(await file.text()));
-    document.querySelector("#template-status").textContent = `Loaded ${file.name} · 432 blocks`;
-    status("Template loaded. Choose image frames.", "ready");
+    const response = await fetch("./template.json");
+    if (!response.ok) throw new Error(`Could not load bundled template (HTTP ${response.status}).`);
+    parseTemplate(await response.json());
+    document.querySelector("#template-status").textContent = "Built-in 24×18 template loaded · 432 blocks";
+    status("Template ready. Choose images or a ZIP archive.", "ready");
   } catch (error) {
-    templateData = null;
-    templatePartsByPosition = null;
-    document.querySelector("#template-status").textContent = "Template could not be loaded";
+    document.querySelector("#template-status").textContent = "Built-in template failed to load";
     status(error.message, "error");
   }
   updateReadyState();
+}
+loadBundledTemplate();
+
+function setSelectedFrames(frames, label) {
+  selectedFrames = frames.sort(naturalCompare);
+  frameSourceLabel = label;
+  if (selectedFrames.length > 5000) {
+    selectedFrames = [];
+    document.querySelector("#frames-status").textContent = "Limit is 5,000 images per conversion";
+    status("This converter supports up to 5,000 images at a time.", "error");
+  } else {
+    document.querySelector("#frames-status").textContent = selectedFrames.length
+      ? `${selectedFrames.length.toLocaleString()} frame(s) selected from ${label}`
+      : "No frames selected";
+  }
+  if (selectedFrames[0]) showPreview(selectedFrames[0]);
+  updateReadyState();
+}
+
+framesInput.addEventListener("change", () => {
+  zipInput.value = "";
+  setSelectedFrames([...(framesInput.files || [])].map(file => ({name:file.name, getBlob:async()=>file})), "selected files");
 });
 
-framesInput.addEventListener("change", async () => {
-  selectedFrames = [...(framesInput.files || [])].sort(naturalCompare);
-  document.querySelector("#frames-status").textContent = selectedFrames.length
-    ? `${selectedFrames.length.toLocaleString()} frame(s) selected`
-    : "No frames selected";
-  if (selectedFrames[0]) await showPreview(selectedFrames[0]);
-  updateReadyState();
+zipInput.addEventListener("change", async () => {
+  framesInput.value = "";
+  const file = zipInput.files?.[0];
+  if (!file) return;
+  try {
+    status("Reading ZIP archive…");
+    const archive = await JSZip.loadAsync(file);
+    const entries = Object.values(archive.files).filter(entry =>
+      !entry.dir && /\\.(jpe?g|png|webp)$/i.test(entry.name) &&
+      !entry.name.split("/").some(part => part.startsWith("."))
+    ).map(entry => ({name:entry.name, getBlob:()=>entry.async("blob")}));
+    setSelectedFrames(entries, file.name);
+    if (!entries.length) status("No JPG, PNG, or WebP images were found in that ZIP.", "error");
+    else status(`Found ${entries.length.toLocaleString()} image(s) in ZIP.`, "ready");
+  } catch (error) {
+    selectedFrames = [];
+    document.querySelector("#frames-status").textContent = "Could not read ZIP";
+    status("Could not open that ZIP file: " + error.message, "error");
+    updateReadyState();
+  }
 });
 
 for (const control of [thresholdInput, darkColorInput, lightColorInput, invertInput, flipXInput, flipYInput]) {
@@ -198,8 +233,9 @@ convertButton.addEventListener("click", async () => {
     const settings = getSettings();
     const zip = new JSZip();
     for (let index = 0; index < selectedFrames.length; index++) {
-      const file = selectedFrames[index];
-      status(`Processing ${file.name}…`);
+      const frame = selectedFrames[index];
+      status(`Processing ${frame.name}…`);
+      const file = await frame.getBlob();
       const grid = await rasterize(file, settings);
       const result = makeFrameJson(grid, file, index);
       const json = JSON.stringify(result);
@@ -207,7 +243,7 @@ convertButton.addEventListener("click", async () => {
       const completed = index + 1;
       progressLabel.textContent = `${completed} / ${selectedFrames.length}`;
       progressFill.style.width = `${(completed / selectedFrames.length) * 100}%`;
-      if (completed % 10 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+      if (completed % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
     }
 
     status("Building ZIP archive…");
@@ -225,7 +261,7 @@ convertButton.addEventListener("click", async () => {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
-    status(`Done! Created ${selectedFrames.length} decompiled JSON files.`, "ready");
+    status(`Done! Created ${selectedFrames.length.toLocaleString()} decompiled JSON files from ${frameSourceLabel}.`, "ready");
   } catch (error) {
     console.error(error);
     status(error.message || "Conversion failed.", "error");
