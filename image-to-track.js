@@ -203,7 +203,7 @@ zipInput.addEventListener("change", async () => {
     status("Reading ZIP archive…");
     const archive = await JSZip.loadAsync(file);
     const entries = Object.values(archive.files).filter(entry =>
-      !entry.dir && /\\.(jpe?g|png|webp)$/i.test(entry.name) &&
+      !entry.dir && /\.(jpe?g|png|webp)$/i.test(entry.name) &&
       !entry.name.split("/").some(part => part.startsWith("."))
     ).map(entry => ({name:entry.name, getBlob:()=>entry.async("blob")}));
     setSelectedFrames(entries, file.name);
