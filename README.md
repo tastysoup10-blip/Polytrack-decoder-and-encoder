@@ -2,6 +2,18 @@
 
 A Python/Tkinter application for encoding and decoding PolyTrack `.track` files.
 
+
+## Browser Version (GitHub Pages)
+
+This repository also includes a browser-based converter. It runs the existing Python encoder and decoder with Pyodide, so the conversion happens locally in the visitor's browser; no Python installation or backend server is needed.
+
+After GitHub Pages is configured to use **GitHub Actions** as its build and deployment source, every push to `main` deploys the site automatically:
+
+- **Browser app:** https://tastysoup10-blip.github.io/Polytrack-decoder-and-encoder/
+- **Workflow:** `.github/workflows/pages.yml`
+
+The first visit downloads the Pyodide runtime from its CDN. The app also fetches `polytrack_encoder.py` and `polytrack_decoder.py` from this repository. The original desktop application and release workflow remain available.
+
 ## Downloads
 
 You do not need Python to use a released build.
